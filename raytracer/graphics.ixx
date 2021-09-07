@@ -238,9 +238,9 @@ export namespace gl {
 	}
 
 
-	void glInit()
+	void glInit(int w = 1920, int h = 1080)
 	{
-		glCreateWindow();
+		glCreateWindow(w, h);
 		clear();
 	}
 
@@ -373,11 +373,11 @@ export namespace gl {
 			j = 0;
 			while (j < height)
 			{
-				dir.x = 2 * ((i + 0.5f) / width) - 1;
-				dir.y = 2 * ((j + 0.5f) / height) - 1;
+				dir.x = 2 * ((i + 0.5f) / (float)width) - 1;
+				dir.y = 2 * ((j + 0.5f) / (float)height) - 1;
 
 				t = tan(fov * pi / 360);
-				dir.x *= t * width / height;
+				dir.x *= t * (float)width / (float)height;
 				dir.y *= t;
 
 			    gldrawPoint(i, j, raycast(!dir));

@@ -1,5 +1,7 @@
-export module hb_math;
 
+#include<math.h>
+
+export module hb_math;
 export namespace hb_math
 {
 	struct vect2
@@ -292,7 +294,7 @@ export namespace hb_math
 		i = 0x5f3759df - (i >> 1); //What tha fuck???
 		y = *(float*)&i;
 		y = y * (threehalfs - (x2 * y * y));
-		//y = y * (threehalfs - (x2 * y * y));
+		y = y * (threehalfs - (x2 * y * y));
 	
 		return y;
 	}
@@ -389,14 +391,14 @@ export namespace hb_math
 	vect3 operator!(const vect3& a) 
 	{
 		vect3 result;
-		float inv_length;
-		inv_length = q_sqrt(a.x* a.x 
+		float length;
+		length = sqrtf(a.x* a.x 
 		+ a.y * a.y
 		+ a.z * a.z);
 		
-		result.x = a.x * inv_length;
-		result.y = a.y * inv_length;
-		result.z = a.z * inv_length;
+		result.x = a.x / length;
+		result.y = a.y / length;
+		result.z = a.z / length;
 		
 		return result;
 	}

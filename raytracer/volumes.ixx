@@ -1,4 +1,5 @@
 #include <math.h>
+#include<iostream>
 import hb_math;
 
 
@@ -15,30 +16,32 @@ export namespace volumes
 
 	struct sphere
 	{
-		float radius;
+		double radius;
 		vect3 center;
 		material mat;
 	};
 
 	struct intersect
 	{
-		float distance = 0;
+		double distance = 0;
 	};
 
 	intersect* hitSphere(sphere* a, vect3* orig, vect3* dir) 
 	{
 		intersect* result;
 		vect3 L = a->center - *orig;
-		float tca_sqr = L ^ *dir;
-		tca_sqr *= tca_sqr;
-		float l_sqr = L.x * L.x + L.y * L.y + L.z * L.z;
-		float d_sqr = sqrtf(l_sqr - tca_sqr);
+		double tca= L ^ *dir;
+		
+		double l_sqr = (L.x * L.x + L.y * L.y + L.z * L.z);
+		double d = (l_sqr - tca*tca);
 
-		if (d_sqr >  a->radius) return nullptr;
+//		if (d < 0) return nullptr;
+		//std::cout << d << std::endl;
+		if (d >  a->radius* a->radius) return nullptr;
 
-		float thc_sqr = a->radius  - d_sqr;
-		float t0 = (L ^ *dir) - thc_sqr;
-		float t1 = (L ^ *dir) +  thc_sqr;
+		double thc = sqrt(a->radius * a->radius - d);
+		double t0 = tca - thc;
+		double t1 = tca + thc;
 
 		if (t0 < 0)
 			t0 = t1;
