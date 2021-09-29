@@ -9,9 +9,18 @@ using namespace hb_math;
 
 export namespace volumes
 {
+	enum materialType
+	{
+		OPAQUE = 0,
+		REFLECTIVE,
+		TRANSPARENT
+	};
 	struct material
 	{
 		vect3 diffuse;
+		double specular = 1;
+		float ior = 1;
+		int type;
 	};
 
 	struct sphere
@@ -24,6 +33,10 @@ export namespace volumes
 	struct intersect
 	{
 		double distance = 0;
+		vect3 point;
+		vect3 normal;
+		void* object;
+		material Mat;
 	};
 
 	intersect* hitSphere(sphere* a, vect3* orig, vect3* dir) 
@@ -39,6 +52,7 @@ export namespace volumes
 		//std::cout << d << std::endl;
 		if (d >  a->radius* a->radius) return nullptr;
 
+		//sqrt represents a precision risk
 		double thc = sqrt(a->radius * a->radius - d);
 		double t0 = tca - thc;
 		double t1 = tca + thc;
@@ -48,9 +62,13 @@ export namespace volumes
 
 		if (t0 < 0)
 			return nullptr;
+
 		result = new intersect();
 		result->distance = t0;
-		
+		result->point = *orig + (*dir * t0);
+		result->normal = !(result->point - a->center);
+		result->object = a;
+		result->Mat = a->mat;
 		return result;
 
 	}

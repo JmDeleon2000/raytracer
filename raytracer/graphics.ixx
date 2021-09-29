@@ -1,5 +1,6 @@
 #pragma warning(disable : 4996)
 #include <iostream>
+#include<math.h>
 import ModelImporter;
 import hb_math;
 import volumes;
@@ -17,6 +18,7 @@ using namespace volumes;
 
 #define pixel_size  3
 #define pi 3.1415926535897932
+
 
 
 
@@ -95,6 +97,42 @@ export namespace gl {
 	int vol_size;
 
 	vect3 CameraPosition;
+
+	//ambient light
+	vect3* ambientColor;
+	//directional light
+	vect3* directionalColor;
+	vect3 dirLight;
+	//point Lights
+	vect3 pointLightsCol[10];
+	vect3 pointLightsPos[10];
+	int pointLI = 0;
+	int MAX_RECURSION = 3;
+	texture* enviromentMap;
+
+	void setAmbientLight(vect3 color, float intensity) 
+	{
+		if (ambientColor)
+			delete ambientColor;
+		ambientColor = new vect3();
+		*ambientColor = color * intensity;
+	}
+
+	void setDirLight(vect3 color, vect3 direction, float intensity)
+	{
+		if (directionalColor)
+			delete directionalColor;
+		directionalColor = new vect3();
+		*directionalColor = color * intensity;
+		dirLight = !(direction * -1);
+	}
+
+	void setPointLights(vect3 color, vect3 position , float intesity) 
+	{
+		pointLightsCol[pointLI] = color * intesity;
+		pointLightsPos[pointLI] = position;
+		pointLI++;
+	}
 
 
 	void glCreateViewPort(int x, int y, int width, int height)
@@ -208,6 +246,7 @@ export namespace gl {
 			col3* col = new col3(color->x, color->y, color->z);
 			frameBuffer[x][y] = *col;
 			delete col;
+			delete color;
 			return;
 		}
 		frameBuffer[x][y] = *draw_col;
@@ -246,118 +285,176 @@ export namespace gl {
 
 
 
-	inline void barycentricCords(float ABC, vect2 A, vect2 B, vect2 C, vect2 P, vect3* out)
+	
+
+
+
+	bool pointShadowTest(int PLindex, vect3 point, void* check_for_object) 
 	{
-		float u, v, w;
-
-
-
-		if (ABC == 0)
+		int i = 0;
+		vect3 dir = (!(pointLightsPos[PLindex] - point));
+		intersect* hit = nullptr;
+		while (i < vol_size)
 		{
-			out->x = -1;
-			out->y = -1;
-			out->z = -1;
-			return;
+			if (hit)
+				delete hit;
+			//if it hits any object other than the object we want to know if it gets ocluded
+			hit = hitSphere(&spheres[i], &CameraPosition, &dir);
+			if (hit && hit->object != check_for_object)
+			{
+				delete hit;
+				return true;
+			}
+			i++;
 		}
-
-		u = ((B.y - C.y) * (P.x - C.x) + (C.x - B.x) * (P.y - C.y)) / ABC;
-
-		v = ((C.y - A.y) * (P.x - C.x) + (A.x - C.x) * (P.y - C.y)) / ABC;
-
-		w = 1 - u - v;
-		out->x = u;
-		out->y = v;
-		out->z = w;
+		return false;
 	}
 
-	M4x4 createRotationMatrix(vect3 rotation)
+	bool dirShadowTest(vect3 orig, vect3 dir, void* ignore)
 	{
-		M4x4  Rx, Ry, Rz;
-		Rz = Ry = Rx = 'I';
-
-		rotation = rotation * (pi / 180);
-		Rx[1][1] = Rx[2][2] = cos(rotation.x);
-		Rx[1][2] = sin(rotation.x);
-		Rx[2][1] = -sin(rotation.x);
-		Ry[0][0] = Ry[2][2] = cos(rotation.y);
-		Ry[2][0] = sin(rotation.y);
-		Ry[0][2] = -sin(rotation.y);
-		Rz[0][0] = Rz[1][1] = cos(rotation.z);
-		Rz[0][1] = sin(rotation.z);
-		Rz[1][0] = -sin(rotation.z);
-
-		return Rx * Ry * Rz;
+		int i = 0;
+		intersect* hit;
+		while (i < vol_size)
+		{
+			if (ignore == &spheres[i])
+			{
+				i++;
+				continue;
+			}
+			hit = hitSphere(&spheres[i], &CameraPosition, &dir);
+			if (hit)
+			{
+				delete hit;
+				return true;
+			}
+			i++;
+		}
+		return false;
 	}
 
-	M4x4 createObjectMatrix(vect3 scale, vect3 translate, vect3 rotation)
-	{
-		M4x4 Mt, Ms, Mr;
-		Ms = Mt = 'I';
-		Mt[0][3] = translate.x;
-		Mt[1][3] = translate.y;
-		Mt[2][3] = translate.z;
-
-		Ms[0][0] = scale.x;
-		Ms[1][1] = scale.y;
-		Ms[2][2] = scale.z;
-
-		Mr = createRotationMatrix(rotation);
-
-		return  Mt * Mr * Ms;
-	}
-
-	vect3 transform(vect3 V, M4x4 Matrix)
-	{
-		vect4 result;
-
-		result = V;
-		result = Matrix * result;
-		result = result * (1 / result.w);
-
-		vect3 vf;
-		vf.x = result.x;
-		vf.y = result.y;
-		vf.z = result.z;
-
-		return vf;
-	}
-
-	vect3 dirTransform(vect3 V, M4x4 Matrix)
-	{
-		vect4 result;
-
-		result = V;
-		result.w = 0;
-		result = Matrix * result;
-
-
-		vect3 vf;
-		vf.x = result.x;
-		vf.y = result.y;
-		vf.z = result.z;
-
-		return vf;
-	}
-
-
-	vect3* raycast(vect3 dir) 
+	vect3* raycast(vect3 dir, vect3* orig = nullptr, void* ignore = nullptr, int recursion = 0) 
 	{
 		float depth = FLT_MAX;
 		vect3* diffuse = nullptr;
-		intersect* hit;
+		intersect* hit = nullptr;
+		intersect* hitCheck = nullptr;
+		vect3 aLightColor;
+		vect3 dLightColor;
+		vect3 pLightColor;
+		vect3 specColor;
+		vect3 lightColoration;
+		vect3 viewDir;
+		material Mat;
+
+		if (recursion >= MAX_RECURSION)
+			if (enviromentMap)
+			{
+				vect3* envColor = new vect3();
+				enviromentMap->getColor(dir, envColor);
+				return envColor;
+			}
+			else
+				return nullptr;
+
+		float intensity;
+		float specIntensity;
 		int i = 0;
 		while (i < vol_size)
-		{
-			hit = hitSphere(&spheres[i], &CameraPosition, &dir);
-			if (hit && hit->distance < depth) 
+		{	
+			if (ignore == &spheres[i])
 			{
-				depth = hit->distance;
-				diffuse = &spheres[i].mat.diffuse;
-				delete hit;
+				i++;
+				continue;
 			}
-			
+			hitCheck = hitSphere(&spheres[i], &CameraPosition, &dir);
+			if (hitCheck)
+			{
+				if (hitCheck->distance < depth) 
+				{
+					depth = hitCheck->distance;
+					if (!hit)
+						hit = new intersect();
+					*hit = *hitCheck;
+				}
+				delete hitCheck; 
+			}
 			i++;
 		}
+		i = 0;
+		if (hit) 
+		{
+			//std::cout << "leak check" << std::endl;
+			diffuse = new vect3();
+			Mat = hit->Mat;
+			*diffuse = ((sphere*)hit->object)->mat.diffuse;
+			viewDir = !(CameraPosition - hit->point);
+			float shadow = 1;
+
+			if (ambientColor)
+				aLightColor = *ambientColor;
+
+			if (directionalColor)
+			{
+				intensity = clamp01(dirLight ^ hit->normal);
+				specIntensity = clamp01(reflection(hit->normal, dirLight) ^ viewDir);
+				specIntensity = pow(specIntensity, Mat.specular);
+
+				if (intensity > 0 && dirShadowTest(hit->point, dirLight*-1, hit->object))
+					shadow = 0;
+				
+				specColor = specColor + *directionalColor * specIntensity * shadow;
+				dLightColor = *directionalColor * intensity * shadow;
+			}
+
+			while (i < pointLI)
+			{
+				shadow = 1;
+				vect3 pLightDir = (pointLightsPos[i] - hit->point);
+				pLightDir = !pLightDir;
+				intensity = clamp01(pLightDir ^ hit->normal);
+				specIntensity = clamp01(reflection(hit->normal, pLightDir) ^ viewDir);
+				specIntensity = pow(specIntensity, Mat.specular);
+
+				if (pointShadowTest(i, hit->point, hit->object))
+					shadow = 0;
+
+				specColor = specColor + pointLightsCol[i] * specIntensity * shadow;
+				pLightColor = pLightColor + pointLightsCol[i] * intensity * shadow;
+				i++;
+			}
+
+			if (Mat.type == OPAQUE)
+				lightColoration = aLightColor + dLightColor + pLightColor + specColor;
+			
+			if (Mat.type == REFLECTIVE) 
+			{
+				vect3 reflect;
+				reflect = reflection(hit->normal, dir * -1);
+				vect3* reflect_color = raycast(reflect, &hit->point, hit->object, recursion + 1);
+				if (reflect_color)
+				{
+					lightColoration = *reflect_color + specColor;
+					delete reflect_color;
+				}
+			}
+			if (Mat.type == TRANSPARENT)
+			{
+				//TODO
+			}
+			diffuse->x = clamp01(diffuse->x * lightColoration.x);
+			diffuse->y = clamp01(diffuse->y * lightColoration.y);
+			diffuse->z = clamp01(diffuse->z * lightColoration.z);
+			delete hit;
+		}
+		else
+			if (enviromentMap)
+			{
+				vect3* envColor = new vect3();
+				enviromentMap->getColor(dir, envColor);
+				return envColor;
+			}
+			else
+				return nullptr;
 		return diffuse;
 	}
 

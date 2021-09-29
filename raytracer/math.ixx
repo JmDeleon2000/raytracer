@@ -392,10 +392,10 @@ export namespace hb_math
 	{
 		vect3 result;
 		float length;
-		length = sqrtf(a.x* a.x 
-		+ a.y * a.y
-		+ a.z * a.z);
-		
+		length = sqrtf(a.x * a.x
+			+ a.y * a.y
+			+ a.z * a.z);
+
 		result.x = a.x / length;
 		result.y = a.y / length;
 		result.z = a.z / length;
@@ -456,5 +456,76 @@ export namespace hb_math
 		vect3 c;
 		c = a - b;
 		return 1/q_sqrt(c.x * c.x + c.y * c.y + c.z * c.z);
+	}
+
+	vect3 reflection(vect3 n, vect3 d) 
+	{
+		vect3 result;
+		// R =	2*(N.L) * N - L
+		float x = 2 * (n ^ d);
+		result = n * x;
+		result = result - d;
+		return !result;
+	}
+
+	vect3* tryRefraction(vect3 n, vect3 d, float ior) 
+	{
+		float cosi = n ^ d;
+		cosi = cosi < -1 ? -1 : cosi > 1 ? 1 : cosi;
+		float etai = 1;
+		float etat = ior;
+		float temp;
+		float eta;
+		float k;
+
+		if (cosi < 0)
+			cosi = -cosi;
+		else 
+		{
+			temp = etai;
+			etai = etat;
+			etat = temp;
+			n = n * -1;
+		}
+
+		eta = etai / etat;
+		k = 1 - (eta * eta) * (1 - (cosi * cosi));
+
+		if (k < 0)
+			return nullptr;
+		vect3* R = new vect3();
+		*R = d * eta + n * (eta * cosi - sqrtf(k));
+		return R;
+	}
+
+
+	float fresnel(vect3 n, vect3 d, float ior) 
+	{
+		float cosi = n ^ d;
+		cosi = cosi < -1 ? -1 : cosi > 1 ? 1 : cosi;
+		float etai = 1;
+		float etat = ior;
+		float temp;
+		float sint;
+
+		if (cosi > 0)
+		{
+			temp = etai;
+			etai = etat;
+			etat = temp;
+		}
+
+		sint = etai / etat * sqrtf(clamp01(1 - cosi * cosi));
+
+		if (sint >= 1)
+			return 1;
+
+		float cost;
+		cost = sqrtf(clamp01(1 - sint * sint));
+		cosi = cosi < 0 ? -cosi : cosi;
+		float Rs = ((etat * cosi) - (etai * cost)) / ((etat * cosi) + (etai * cost));
+		float Rp = ((etai * cosi) - (etat * cost)) / ((etai * cosi) + (etat * cost));
+
+		return (Rs * Rs + Rp * Rp) / 2;
 	}
 }

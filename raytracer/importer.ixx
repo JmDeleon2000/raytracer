@@ -2,6 +2,7 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include <math.h>
 
 export module ModelImporter;
 import hb_math;
@@ -264,11 +265,11 @@ export namespace modelImp
 			image = new col3 * [height];
 
 			int i = 0, j;
-			while (i < width)
+			while (i < height)
 			{
 				j = 0;
 				image[i] = new col3[width];
-				while (j < height)
+				while (j < width)
 				{
 					//image[i][j] = *new col3();
 					text.read((char*)image[i][j].col, 3);
@@ -279,27 +280,13 @@ export namespace modelImp
 			text.close();
 		}
 
-		void getColor(float x, float y, vect3* out)
+#define PI 3.14159265
+#define Tau 6.2831853
+		void getColor(vect3 d, vect3* out)
 		{
-			if (!out)return;
-			if (x < 0)
-			{
-				x = ((int)x)*-1+x;
-			}
-			if (x >= 1)
-			{
-				x = x-(int)x;
-			}
-			if (y < 0)
-			{
-				y = ((int)y) * -1 + y;
-			}
-			if (y >= 1)
-			{
-				y = y-(int)y;
-			}
-			int j = x * width;
-			int i = y * height;
+			int i, j;
+			j = (int)(atan2f(d[0], d[2]) / Tau * (float)width);
+			i = (int)(acos(-d[1]) / PI * (float)height);
 
 			out->z = (float)image[i][j].col[0]/255;
 			out->y = (float)image[i][j].col[1]/255;
