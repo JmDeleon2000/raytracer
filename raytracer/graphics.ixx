@@ -332,7 +332,7 @@ export namespace gl {
 		return false;
 	}
 
-	vect3* raycast(vect3 dir, vect3* orig = nullptr, void* ignore = nullptr, int recursion = 0) 
+	vect3* raycast(vect3 dir, vect3* orig, void* ignore = nullptr, int recursion = 0) 
 	{
 		float depth = FLT_MAX;
 		vect3* diffuse = nullptr;
@@ -366,7 +366,9 @@ export namespace gl {
 				i++;
 				continue;
 			}
-			hitCheck = hitSphere(&spheres[i], &CameraPosition, &dir);
+			
+			hitCheck = hitSphere(&spheres[i], orig, &dir);
+
 			if (hitCheck)
 			{
 				if (hitCheck->distance < depth) 
@@ -439,7 +441,34 @@ export namespace gl {
 			}
 			if (Mat.type == TRANSPARENT)
 			{
-				//TODO
+				bool outside = ((dir ^ hit->normal) < 0);
+				vect3 bias = hit->normal * 0.001;
+				float kr = fresnel(hit->normal, dir, Mat.ior);
+				vect3* refract_color = new vect3();
+
+				vect3 reflect = reflection(hit->normal, dir * -1);
+				vect3 reflectOrig = outside ? hit->point + bias : hit->point - bias;
+				vect3* reflect_color = raycast(reflect, &reflectOrig, nullptr, recursion + 1);
+				if (!reflect_color)
+					reflect_color = new vect3();
+				
+				if (kr < 1)
+				{
+					vect3* refract = tryRefraction(hit->normal, dir, Mat.ior);
+					if (refract)
+					{
+						delete refract_color;
+						vect3 refractOrig = outside ? hit->point - bias : hit->point + bias;
+						refract_color = raycast(*refract, &refractOrig, nullptr, recursion + 1);
+						if (!refract_color)
+							refract_color = new vect3();
+						delete refract;
+					}
+				}
+				
+				lightColoration = *reflect_color * kr + *refract_color * (1 - kr) + specColor;
+				delete reflect_color;
+				delete refract_color;
 			}
 			diffuse->x = clamp01(diffuse->x * lightColoration.x);
 			diffuse->y = clamp01(diffuse->y * lightColoration.y);
@@ -477,7 +506,7 @@ export namespace gl {
 				dir.x *= t * (float)width / (float)height;
 				dir.y *= t;
 
-			    gldrawPoint(i, j, raycast(!dir));
+			    gldrawPoint(i, j, raycast(!dir, &CameraPosition));
 
 				j++;
 			}

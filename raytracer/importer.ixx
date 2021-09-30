@@ -285,7 +285,7 @@ export namespace modelImp
 		void getColor(vect3 d, vect3* out)
 		{
 			int i, j;
-			j = (int)(atan2f(d[0], d[2]) / Tau * (float)width);
+			j = abs((int)((atan2f(d[0], d[2]) / Tau + 0.5) * (float)width));
 			i = (int)(acos(-d[1]) / PI * (float)height);
 
 			out->z = (float)image[i][j].col[0]/255;
