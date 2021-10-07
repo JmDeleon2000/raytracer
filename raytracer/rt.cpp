@@ -10,13 +10,13 @@ using namespace hb_math;
 using namespace volumes;
 
 
-#define sphere_count 6
+#define sphere_count 2
 int main()
 {
 	
 	glInit(1920, 1080);
 	gl::enviromentMap = new modelImp::texture("room.bmp");
-	gl::spheres = new sphere[sphere_count];
+	gl::vols = new volume*[sphere_count];
 	gl::vol_size = sphere_count;
 	vect3 center;
 	vect3 dirLightColor;
@@ -40,6 +40,7 @@ int main()
 	mate.diffuse.x = mate.diffuse.y = mate.diffuse.z = 0.5f;
 	mate.specular = 1;
 	mate.type = OPAQUE;
+	mate.Texture = gl::enviromentMap;
 
 	material skin;
 	skin.diffuse.x = 1;
@@ -52,6 +53,7 @@ int main()
 	mirror.diffuse.x = mirror.diffuse.y = mirror.diffuse.z = 1;
 	mirror.specular = 128;
 	mirror.type = REFLECTIVE;
+	mirror.ior = 200;
 
 	material aluminum;
 	aluminum.diffuse.x = 0.913f;
@@ -76,34 +78,46 @@ int main()
 
 	center.z = -100;
 	center.x = -15;
-	gl::spheres[0].center = center;
-	gl::spheres[0].radius = 10;
-	gl::spheres[0].mat = water;
+	//gl::vols[0] = new sphere(10, center, water);
+
 
 	center.x = 15;
-	gl::spheres[1].center = center;
-	gl::spheres[1].radius = 10;
-	gl::spheres[1].mat = emerald;
+	//gl::vols[1] = new sphere(10, center, emerald);
 
 	center.x = 45;
-	gl::spheres[2].center = center;
-	gl::spheres[2].radius = 10;
-	gl::spheres[2].mat = mirror;
+	gl::vols[0] = new sphere(10, center, mirror);
+
+	//gl::STEPS = 3;
+	vect3 A, B, C, normal;
+	//normal.x = 1;
+	normal.y = -100;
+	normal.z = -1;
+	//center.y = 0;
+	//center.z = -445;
+	A = center;
+	A.x = 60;
+
+	B.x = 0;
+	B.y = 10;
+	B.z = -100;
+
+	C.x = 100;
+	C.y = 100;
+	C.z = -200;
+	
+	//gl::vols[1] = new triangle(A, C, B,  mate, false);
+	//gl::vols[1] = new plane(center, normal, mate);
 
 	center.x = 75;
-	gl::spheres[3].center = center;
-	gl::spheres[3].radius = 10;
-	gl::spheres[3].mat = mate;
+	//gl::vols[3] = new sphere(10, center, mate);
 
 	center.x = -45;
-	gl::spheres[4].center = center;
-	gl::spheres[4].radius = 10;
-	gl::spheres[4].mat = aluminum;
+	//gl::vols[4] = new sphere(10, center, aluminum);
+
 
 	center.x = -75;
-	gl::spheres[5].center = center;
-	gl::spheres[5].radius = 10;
-	gl::spheres[5].mat = skin;
+	//gl::vols[5] = new sphere(10, center, skin);
+
 
 	render();
 	glFinish("output.bmp", false);

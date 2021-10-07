@@ -93,8 +93,9 @@ export namespace gl {
 	const int filesize = width * height * pixel_size;
 
 	float fov = 60;
-	sphere* spheres;
+	volume** vols;
 	int vol_size;
+	int STEPS = 1;
 
 	vect3 CameraPosition;
 
@@ -299,7 +300,7 @@ export namespace gl {
 			if (hit)
 				delete hit;
 			//if it hits any object other than the object we want to know if it gets ocluded
-			hit = hitSphere(&spheres[i], &CameraPosition, &dir);
+			hit = vols[i]->ray_hit(&CameraPosition, &dir);
 			if (hit && hit->object != check_for_object)
 			{
 				delete hit;
@@ -316,16 +317,19 @@ export namespace gl {
 		intersect* hit;
 		while (i < vol_size)
 		{
-			if (ignore == &spheres[i])
+			if (vols[i])
 			{
-				i++;
-				continue;
-			}
-			hit = hitSphere(&spheres[i], &CameraPosition, &dir);
-			if (hit)
-			{
-				delete hit;
-				return true;
+				if (ignore == &vols[i])
+				{
+					i++;
+					continue;
+				}
+				hit = vols[i]->ray_hit(&CameraPosition, &dir);
+				if (hit)
+				{
+					delete hit;
+					return true;
+				}
 			}
 			i++;
 		}
@@ -361,24 +365,27 @@ export namespace gl {
 		int i = 0;
 		while (i < vol_size)
 		{	
-			if (ignore == &spheres[i])
+			if (vols[i])
 			{
-				i++;
-				continue;
-			}
-			
-			hitCheck = hitSphere(&spheres[i], orig, &dir);
-
-			if (hitCheck)
-			{
-				if (hitCheck->distance < depth) 
+				if (ignore == &vols[i])
 				{
-					depth = hitCheck->distance;
-					if (!hit)
-						hit = new intersect();
-					*hit = *hitCheck;
+					i++;
+					continue;
 				}
-				delete hitCheck; 
+
+				hitCheck = vols[i]->ray_hit(orig, &dir);
+
+				if (hitCheck)
+				{
+					if (hitCheck->distance < depth)
+					{
+						depth = hitCheck->distance;
+						if (!hit)
+							hit = new intersect();
+						*hit = *hitCheck;
+					}
+					delete hitCheck;
+				}
 			}
 			i++;
 		}
@@ -388,7 +395,12 @@ export namespace gl {
 			//std::cout << "leak check" << std::endl;
 			diffuse = new vect3();
 			Mat = hit->Mat;
-			*diffuse = ((sphere*)hit->object)->mat.diffuse;
+			if (hit->Mat.Texture)
+			{
+				Mat.Texture->getColor(hit->texcordx, hit->texcordy, diffuse);
+			}
+			else
+				*diffuse = hit->Mat.diffuse;
 			viewDir = !(CameraPosition - hit->point);
 			float shadow = 1;
 
@@ -431,13 +443,16 @@ export namespace gl {
 			if (Mat.type == REFLECTIVE) 
 			{
 				vect3 reflect;
+				vect3 bias = hit->normal * 0.001;
+				vect3 reflect_orign = hit->point + bias;
 				reflect = reflection(hit->normal, dir * -1);
-				vect3* reflect_color = raycast(reflect, &hit->point, hit->object, recursion + 1);
-				if (reflect_color)
-				{
-					lightColoration = *reflect_color + specColor;
-					delete reflect_color;
-				}
+				vect3* reflect_color = raycast(reflect, &reflect_orign, nullptr, recursion + 1);
+				if (!reflect_color)
+					reflect_color = new vect3();
+				
+				lightColoration = *reflect_color + specColor;
+				delete reflect_color;
+				
 			}
 			if (Mat.type == TRANSPARENT)
 			{
@@ -508,9 +523,9 @@ export namespace gl {
 
 			    gldrawPoint(i, j, raycast(!dir, &CameraPosition));
 
-				j++;
+				j += STEPS;
 			}
-			i++;
+			i += STEPS;
 		}
 	}
 

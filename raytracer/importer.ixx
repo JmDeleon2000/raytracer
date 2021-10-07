@@ -40,7 +40,7 @@ export namespace modelImp
 		obj(const char* file)
 		{
 			vector<vect3> v_temp;
-			vector<vect3> uvs_temp;
+			vector<vect2> uvs_temp;
 			vector<vect3> n_temp;
 			vector<face> f_temp;
 
@@ -48,6 +48,7 @@ export namespace modelImp
 			stream.open(file);
 			string line;
 			vect3 temp;
+			vect2 uv_temp;
 
 			while (getline(stream, line))
 			{
@@ -81,17 +82,15 @@ export namespace modelImp
 					double x = (double)atof(line.substr(0, line.find(" ")).c_str());
 					line.erase(0, line.find(" ") + 1);
 					double y = (double)atof(line.substr(0, line.find(" ")).c_str());
-					line.erase(0, line.find(" ") + 1);
-					double z = (double)atof(line.substr(0, line.find(" ")).c_str());
+
 
 #if importer_debug
 					cout << x << " " << y << " " << z << endl;
 #endif // importer_debug
-					temp.x = x;
-					temp.y = y;
-					temp.z = z;
+					uv_temp.x = x;
+					uv_temp.y = y;
 
-					uvs_temp.push_back(temp);
+					uvs_temp.push_back(uv_temp);
 					continue;
 				}
 				if (line[0] == 'v' && line[1] == 'n') //normals
@@ -282,6 +281,8 @@ export namespace modelImp
 
 #define PI 3.14159265
 #define Tau 6.2831853
+
+		//enviroment map
 		void getColor(vect3 d, vect3* out)
 		{
 			int i, j;
@@ -291,7 +292,19 @@ export namespace modelImp
 			out->z = (float)image[i][j].col[0]/255;
 			out->y = (float)image[i][j].col[1]/255;
 			out->x = (float)image[i][j].col[2]/255;
+		}
+
+		//texture
+		void getColor(float x, float y, vect3* out)
+		{
+			int i, j;
 			
+			i = (int)(y * height);
+			j = (int)(x * width);
+
+			out->z = (float)image[i][j].col[0] / 255;
+			out->y = (float)image[i][j].col[1] / 255;
+			out->x = (float)image[i][j].col[2] / 255;
 		}
 	};
 }
