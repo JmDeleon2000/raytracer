@@ -99,7 +99,7 @@ export namespace gl {
 
 	vect3 CameraPosition;
 
-	//ambient light
+	//ambient lights
 	vect3* ambientColor;
 	//directional light
 	vect3* directionalColor;

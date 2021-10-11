@@ -105,6 +105,8 @@ export namespace volumes
 	public:
 		vect3 point;
 		vect3 normal;
+		vect3 wrapDirection;
+		vect3 wrapDirectionY;
 
 	public:
 		plane() {}
@@ -113,6 +115,20 @@ export namespace volumes
 			this->point = point;
 			this->normal = !normal;
 			this->mat = mat;
+			vect3 orig;
+			vect3 dir = !(point * 1.5);
+			float denom = dir ^ normal;
+			float t = ((point - orig) ^ normal) / denom;
+			vect3 hit = orig + dir * t;
+
+			wrapDirection = (point - hit);
+			wrapDirectionY = !(wrapDirection * normal);
+			wrapDirection = !wrapDirection;
+		}
+		plane(vect3 point, vect3 normal)
+		{
+			this->point = point;
+			this->normal = !normal;
 		}
 		intersect* ray_hit(vect3* orig, vect3* dir) 
 		{ 
@@ -132,6 +148,12 @@ export namespace volumes
 					result->Mat = mat;
 					result->object = this;
 					result->normal = normal;
+					if (mat.Texture)
+					{
+						vect3 wrapRef = point - hit;
+						result->texcordx = wrapRef ^ wrapDirection;
+						result->texcordy = wrapRef ^ wrapDirectionY;
+					}
 					return result;
 				}
 			}
@@ -208,7 +230,16 @@ export namespace volumes
 		{
 			float t;
 			float denom = *dir ^ normal;
+#define nomralFix false
+#if normalFix
+			bool flip = false;
 
+
+			if (denom < 0) 
+			{
+				flip = true;
+			}
+#endif
 			if (abs(denom) > 0.0001)
 			{
 				t = ((A - *orig) ^ normal) / denom;
@@ -230,7 +261,10 @@ export namespace volumes
 					result->distance = t;
 					result->Mat = mat;
 					result->object = this;
-					result->normal = normal;
+#if normalFix
+					result->normal = flip ? normal * -1 : normal;
+#endif
+					result->normal =  normal;
 					result->texcordx = uvw.y;
 					result->texcordy = uvw.z;
 					
@@ -323,9 +357,9 @@ export namespace volumes
 		intersect* ray_hit(vect3* orig, vect3* dir)
 		{
 			float t;
-			float denom = *dir ^ normal;
+			float denom = abs(*dir ^ normal);
 
-			if (abs(denom) > 0.0001)
+			if (denom > 0.0001)
 			{
 				t = ((A - *orig) ^ normal) / denom;
 				vect3 uvw;
@@ -356,29 +390,147 @@ export namespace volumes
 	};
 
 	class AABB : public volume 
-	{
-		//TODO
+	{//TODO
+	public:
+		plane planes[6];
+		vect3 minBound;
+		vect3 maxBound;
+
+	public:
+		AABB() {}
+		AABB(vect3 size, vect3 position)
+		{
+			this->mat = mat;
+			minBound = position - size * 0.5;
+			maxBound = position + size * 0.5;
+			vect3 normal;
+			normal.z = -1;
+			new (&planes[0]) plane(maxBound, normal);
+			normal.z = 0;
+			normal.x = 1;
+			new (&planes[1]) plane(maxBound, normal);
+			normal.x = 0;
+			normal.y = 1;
+			new (&planes[2]) plane(maxBound, normal);
+			normal.y = 0;
+			normal.z = -1;
+			new (&planes[3]) plane(minBound, normal);
+			normal.z = 0;
+			normal.x = -1;
+			new (&planes[4]) plane(minBound, normal);
+			normal.x = 0;
+			normal.y = -1;
+			new (&planes[5]) plane(minBound, normal);
+			vect3 bias;
+			bias.x = bias.y = bias.z = 1;
+			this->minBound = minBound + bias * -1;
+			this->maxBound = maxBound + bias;//test
+		}
+
+		AABB(vect3 size, vect3 position, material mat)
+		{
+			this->mat = mat;
+			minBound = position - size * 0.5;
+			maxBound = position + size * 0.5;
+			vect3 normal;
+			normal.z = -1;
+			new (&planes[0]) plane(maxBound, normal);
+			normal.z = 0;
+			normal.x = 1;
+			new (&planes[1]) plane(maxBound, normal);
+			normal.x = 0;
+			normal.y = 1;
+			new (&planes[2]) plane(maxBound, normal);
+			normal.y = 0;
+			normal.z = -1;
+			new (&planes[3]) plane(minBound, normal);
+			normal.z = 0;
+			normal.x = -1;
+			new (&planes[4]) plane(minBound, normal);
+			normal.x = 0;
+			normal.y = -1;
+			new (&planes[5]) plane(minBound, normal);
+			vect3 bias;
+			bias.x = bias.y = bias.z = 1;
+			this->minBound = minBound + bias * -1;
+			this->maxBound = maxBound + bias;//test
+		}
+
+		intersect* ray_hit(vect3 *orig, vect3 *dir) 
+		{
+			intersect *result;
+			int i = 0;
+			while (i < 6)
+			{
+				result = planes[i].ray_hit(orig, dir);
+				if (result) goto satisfactory;
+				i++;
+			}
+			return nullptr;
+		satisfactory:
+			//std::cout << i << std::endl;
+			if (minBound.x <= result->point.x)
+				if(minBound.y <= result->point.y)
+				if(minBound.z <= result->point.z)
+				if(maxBound.x >= result->point.x)
+				if(maxBound.y >= result->point.y)
+				if(maxBound.z >= result->point.z)
+				{
+					result->normal.z *= -1;
+					return result;
+				}
+					
+			delete result;
+			return nullptr;
+		}
+
 	};
 
 	class Model : public volume
 	{
 	public:
-		AABB boundingVolume;
+		volume *boundingVolume;
 		Face* faces;
+		int fcount;
 
 	public:
-		Model(modelImp::obj *source) 
+		Model(modelImp::obj *source, vect3 scale, vect3 translate, material mat) 
 		{
-			int i = 0, j;
-			
+			this->mat = mat;
+			int i = 0;
+			vect3 minBound;
+			minBound.x = minBound.y = minBound.z = FLT_MAX;
+			vect3 maxBound;
+			maxBound.x = maxBound.y = maxBound.z = -FLT_MAX;
 			vect3 v[3], vn[3];
 			vect2 vt[3];
 			faces = new Face[source->f_size];
 			while (i < source->f_size)
 			{
-				v[0] = source->v[source->f[i].data[0] - 1];
-				v[1] = source->v[source->f[i].data[3] - 1];
-				v[2] = source->v[source->f[i].data[6] - 1];
+				v[0] = (source->v[source->f[i].data[0] - 1] * scale) + translate;
+				v[1] = (source->v[source->f[i].data[3] - 1] * scale) + translate;
+				v[2] = (source->v[source->f[i].data[6] - 1] * scale) + translate;
+
+				if (minBound.x > v[0].x) minBound.x = v[0].x;
+				if (minBound.x > v[1].x) minBound.x = v[1].x;
+				if (minBound.x > v[2].x) minBound.x = v[2].x;
+				if (minBound.y > v[0].x) minBound.y = v[0].y;
+				if (minBound.y > v[1].x) minBound.y = v[1].y;
+				if (minBound.y > v[2].x) minBound.y = v[2].y;
+				if (minBound.z > v[0].x) minBound.z = v[0].z;
+				if (minBound.z > v[1].x) minBound.z = v[1].z;
+				if (minBound.z > v[2].x) minBound.z = v[2].z;
+
+				if (maxBound.x < v[0].x) maxBound.x = v[0].x;
+				if (maxBound.x < v[1].x) maxBound.x = v[1].x;
+				if (maxBound.x < v[2].x) maxBound.x = v[2].x;
+				if (maxBound.y < v[0].x) maxBound.y = v[0].y;
+				if (maxBound.y < v[1].x) maxBound.y = v[1].y;
+				if (maxBound.y < v[2].x) maxBound.y = v[2].y;
+				if (maxBound.z < v[0].x) maxBound.z = v[0].z;
+				if (maxBound.z < v[1].x) maxBound.z = v[1].z;
+				if (maxBound.z < v[2].x) maxBound.z = v[2].z;
+
 
 				vt[0].x = source->uvs[source->f[i].data[1] - 1].x;
 				vt[0].y = source->uvs[source->f[i].data[1] - 1].y;
@@ -396,22 +548,30 @@ export namespace volumes
 									vn[0], vn[1], vn[2]);
 				i++;
 			}
+			fcount = source->f_size;
+			vect3 bound = maxBound - minBound;
+			float radio = bound.x + bound.x + bound.y + bound.y + bound.z + bound.z;
+			radio = sqrtf(radio);
+			boundingVolume = new sphere(radio, translate, mat);
 		}
 
 		intersect* ray_hit(vect3* orig, vect3* dir) 
 		{
-			if (boundingVolume.ray_hit(orig, dir))
+			intersect* bbtest = boundingVolume->ray_hit(orig, dir);
+			if (bbtest)
 			{
+				delete bbtest;
 				int i = 0;
 				intersect* result = nullptr, * hit;
 				float depth = -FLT_MAX;
-				while (i < sizeof(faces)/sizeof(Face))
+				while (i < fcount)
 				{
 					hit = faces[i].ray_hit(orig, dir);
 					if (hit) 
 					{
 						if (depth < hit->distance) 
 						{
+							depth = hit->distance;
 							if (!result) result = new intersect();
 							result->distance = hit->distance;
 							result->Mat = this->mat;
