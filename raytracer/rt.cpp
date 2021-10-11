@@ -10,7 +10,7 @@ using namespace hb_math;
 using namespace volumes;
 
 
-#define sphere_count 23
+#define sphere_count 24
 //stuff 8
 //apples 15
 int main()
@@ -57,7 +57,7 @@ int main()
 	trapo.Texture = new modelImp::texture("trapo.bmp");
 	
 	material paper;
-	paper.diffuse.x = paper.diffuse.y = paper.diffuse.z = 0.7f;
+	paper.diffuse.x = paper.diffuse.y = paper.diffuse.z = 0.9f;
 	paper.specular = 64;
 	paper.type = OPAQUE;
 
@@ -68,17 +68,25 @@ int main()
 	counter.diffuse.x = counter.diffuse.y = counter.diffuse.z = 1;
 
 	material darkwood;
-	darkwood.specular = 124;
+	darkwood.specular = 128;
 	darkwood.diffuse.x = darkwood.diffuse.y = darkwood.diffuse.z = 0.2;
 
+	material aluminum;
+	aluminum.specular = 256;
+	aluminum.diffuse.x = aluminum.diffuse.y = aluminum.diffuse.z = 0.3f;
+	aluminum.type = REFLECTIVE;
+
+	material duroport;
+	darkwood.specular = 2;
+	darkwood.diffuse.x = darkwood.diffuse.y = darkwood.diffuse.z = 1;
 
 	gl::setAmbientLight(water.diffuse, 0.1);
 	gl::setDirLight(dirLightColor, dirLightDirection, 0.7);
 	vect3 pointLightPosition;
 	vect3 pointLightColor;
 	pointLightPosition.x = 0;
-	pointLightPosition.z = 0;
-	pointLightPosition.y = 00;
+	pointLightPosition.z = -20;
+	pointLightPosition.y = 30;
 	pointLightColor.x = pointLightColor.y = pointLightColor.z = 1;
 	gl::setPointLights(pointLightColor, pointLightPosition, 0.7);
 
@@ -91,7 +99,7 @@ int main()
 	regla = !regla;
 
 	//testing
-	gl::STEPS = 1;
+	//gl::STEPS = 3;
 	//plastic.Texture = new modelImp::texture("barytest.bmp");
 	//paper.Texture = new modelImp::texture("barytest.bmp");
 	//trapo.Texture = new modelImp::texture("barytest.bmp");
@@ -100,11 +108,11 @@ int main()
 
 	vect3 A, B, C;
 	
-	B.x = 10;
+	B.x = 8;
 	B.y = 17;
-	B.z = depth - 56;
+	B.z = depth - 55;
 
-	C.x = -10;
+	C.x = -12;
 	C.y = B.y;
 	C.z = depth - 55;
 
@@ -114,6 +122,7 @@ int main()
 
 	B = A;
 	B.x *= -1;
+
 
 
 	gl::vols[1] = new triangle(A, B, C, plastic);
@@ -136,7 +145,7 @@ int main()
 	gl::vols[3] = new triangle(C, B, A, paper);
 
 	A.x = -27;
-	A.y = 22;
+	A.y = 20;
 	A.z = depth-74;
 
 	B.x = -40;
@@ -158,7 +167,7 @@ int main()
 	gl::vols[5] = new triangle(C, B, A, trapo);
 
 	A.x = -55;
-	A.y = 20;
+	A.y = 18;
 	A.z = depth-76;
 
 	gl::vols[6] = new triangle(A, B, C, trapo);
@@ -190,6 +199,8 @@ int main()
 	center.z = depth - 63;
 	float radio = 3;
 
+	vect3 Aa, Ba, Ca, appleDir;
+	Aa = center;
 	gl::vols[appleStartIndex] = new sphere(radio, center, greenapple);
 
 	A = B;
@@ -209,6 +220,7 @@ int main()
 	center.x += 5;
 	center.y -= 2;
 	center.z += 2;
+	Ba = center;
 	gl::vols[appleStartIndex + 4] = new sphere(radio, center, greenapple);
 
 	center.x -= 0;
@@ -227,6 +239,7 @@ int main()
 	center.x += 1;
 	center.y += 3.8;
 	center.z -= 7;
+	Ca = center;
 	gl::vols[appleStartIndex + 8] = new sphere(radio, center, greenapple);
 
 	center.x += 3;
@@ -244,6 +257,7 @@ int main()
 	center.x -= 0.2;
 	center.y -= 4;
 	center.z += 7;
+	appleDir = !(center - Aa);
 	gl::vols[appleStartIndex + 11] = new sphere(radio, center, redapple);
 	center.x += 5;
 	center.y -= 0.2;
@@ -254,7 +268,27 @@ int main()
 	center.z += 1;
 	gl::vols[appleStartIndex + 13] = new sphere(radio, center, redapple);
 	
+	B.x = 10;
+	B.y = 15;
+	B.z = depth - 55;
 
+	C.x = 0;
+	C.y = B.y;
+	C.z = depth - 55;
+
+	A = B - regla * 5;
+	gl::vols[appleStartIndex + 14] = new triangle(A, B, C, aluminum);
+
+	Aa = Aa + appleDir * -5;
+	Ba = Ba + appleDir * -5;
+	Ca = Ca + appleDir * -5;
+
+	//gl::vols[appleStartIndex + 15] = new triangle(Aa, Ba, Ca, duroport);
+
+	Aa = Ba;
+	Aa.x *= -1;
+
+//	gl::vols[appleStartIndex + 16] = new triangle(Aa, Ba, Ca, duroport);
 
 	render();
 	glFinish("output.bmp", false);
