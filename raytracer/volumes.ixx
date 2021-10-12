@@ -590,4 +590,76 @@ export namespace volumes
 			return nullptr;
 		}
 	};
+
+	class cylinder : public volume
+	{
+	public:
+		float radius;
+		float height;
+		vect3 center;
+
+	public:
+		cylinder() {}
+		cylinder(vect3 center, float radius, float height) 
+		{
+			this->radius = radius;
+			this->height = height;
+			this->center = center;
+		}
+
+		intersect* ray_hit(vect3* orig, vect3* dir) 
+		{
+
+		
+
+			vect2 center2D, orig2D, dir2D;
+			center2D.x = center.x;
+			center2D.y = center.z;
+			orig2D.x = orig->x;
+			orig2D.y = orig->z;
+			dir2D.x = dir->x;
+			dir2D.y = dir->z;
+
+			float t = 0;
+
+			intersect* result;
+			vect2 L = center2D - orig2D;
+			double tca = L ^ dir2D;
+
+			double l_sqr = (L.x * L.x + L.y * L.y);
+			double d = (l_sqr - tca * tca);
+
+			//		if (d < 0) return nullptr;
+					//std::cout << d << std::endl;
+			if (d > this->radius * this->radius) return nullptr;
+
+			//sqrt represents a precision risk
+			double thc = sqrt(this->radius * this->radius - d);
+			double t0 = tca - thc;
+			double t1 = tca + thc;
+
+			if (t0 < 0)
+				t0 = t1;
+
+			if (t0 < 0)
+				return nullptr;
+			vect3 point = *orig + (*dir * t0);
+			if (point.y - center.y > height)
+				return nullptr;
+
+			result = new intersect();
+			result->distance = t0;
+			result->point = *orig + (*dir * t0);
+			vect3 n = (result->point - this->center);
+			n.y = 0;
+			result->normal = !n;
+			result->object = this;
+			result->Mat = this->mat;
+			return result;
+
+			//keep it circle
+			//hope
+			return nullptr;
+		}
+	};
 };

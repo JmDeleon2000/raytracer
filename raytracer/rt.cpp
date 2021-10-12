@@ -10,14 +10,14 @@ using namespace hb_math;
 using namespace volumes;
 
 
-#define sphere_count 24
+#define sphere_count 26
 //stuff 8
 //apples 15
 int main()
 {
 	
 	glInit(1920, 1080);
-	gl::enviromentMap = new modelImp::texture("envMapProyecto.bmp");
+	gl::enviromentMap = new modelImp::texture("room.bmp");
 	gl::vols = new volume*[sphere_count];
 	gl::vol_size = sphere_count;
 	
@@ -64,12 +64,12 @@ int main()
 	material counter;
 	counter.specular = 64;
 	counter.type = OPAQUE;
-	counter.Texture = gl::enviromentMap;
+	counter.Texture = new modelImp::texture("envMapProyecto.bmp");
 	counter.diffuse.x = counter.diffuse.y = counter.diffuse.z = 1;
 
 	material darkwood;
 	darkwood.specular = 128;
-	darkwood.diffuse.x = darkwood.diffuse.y = darkwood.diffuse.z = 0.2;
+	darkwood.Texture = new modelImp::texture("darkwoodTexture.bmp");
 
 	material aluminum;
 	aluminum.specular = 256;
@@ -89,6 +89,10 @@ int main()
 	pointLightPosition.y = 30;
 	pointLightColor.x = pointLightColor.y = pointLightColor.z = 1;
 	gl::setPointLights(pointLightColor, pointLightPosition, 0.7);
+	pointLightPosition.x = 0;
+	pointLightPosition.z = 0;
+	pointLightPosition.y = -50;
+	//gl::setPointLights(pointLightColor, pointLightPosition, 0.7);
 
 	float depth = -60;
 	
@@ -204,14 +208,15 @@ int main()
 	gl::vols[appleStartIndex] = new sphere(radio, center, greenapple);
 
 	A = B;
-	A.y = -100;
+	A.y = -20;
+	A.z = -10;
 
-	gl::vols[appleStartIndex + 1] = new triangle(A, B, C, darkwood);
+	gl::vols[appleStartIndex + 1] = new triangle(C, B, A, darkwood);
 
 	B = A;
 	B.x *= -1;
 	
-	gl::vols[appleStartIndex + 2] = new triangle(A, B, C, darkwood);
+	gl::vols[appleStartIndex + 2] = new triangle(C, B, A, darkwood);
 	
 	center.x += 5;
 	center.y += 1.1;
@@ -279,16 +284,16 @@ int main()
 	A = B - regla * 5;
 	gl::vols[appleStartIndex + 14] = new triangle(A, B, C, aluminum);
 
-	Aa = Aa + appleDir * -5;
-	Ba = Ba + appleDir * -5;
-	Ca = Ca + appleDir * -5;
+	center.x = -70;
+	center.y += 30;
+	center.z -= 15;
+	gl::vols[appleStartIndex + 15] = new sphere(6, center, water);
+	center.x -= 20;
+	center.z -= 15;
+	gl::vols[appleStartIndex + 16] = new sphere(3, center, water);
 
-	//gl::vols[appleStartIndex + 15] = new triangle(Aa, Ba, Ca, duroport);
-
-	Aa = Ba;
-	Aa.x *= -1;
-
-//	gl::vols[appleStartIndex + 16] = new triangle(Aa, Ba, Ca, duroport);
+	
+	
 
 	render();
 	glFinish("output.bmp", false);
